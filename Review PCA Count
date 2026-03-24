@@ -1,0 +1,16 @@
+-- Adjustable year and month
+SET target_year = 2026;
+SET target_month = 2;
+
+SELECT 
+    t.COMPLETED_BY,
+    COALESCE(u.FIRSTNAME || ' ' || u.LASTNAME, CAST(t.COMPLETED_BY AS STRING)) AS Completed_By_Name,
+    COUNT(*) AS Task_45067_Count
+FROM TASKS t
+LEFT JOIN DPP_DATA.READER.USERS u
+    ON t.COMPLETED_BY = u.UID
+WHERE t.TASK_ITEM_ID = 45067
+  AND t.COMPLETED_AT >= DATEFROMPARTS($target_year, $target_month, 1)
+  AND t.COMPLETED_AT < DATEADD(MONTH, 1, DATEFROMPARTS($target_year, $target_month, 1))
+GROUP BY t.COMPLETED_BY, u.FIRSTNAME, u.LASTNAME
+ORDER BY Task_45067_Count DESC;
