@@ -1,0 +1,70 @@
+SELECT 
+    c.ID AS Contact_ID,
+    c.FIRSTNAME AS Contact_FirstName,
+    c.LASTNAME  AS Contact_LastName,
+    c.DROPPED_DATE,
+    co.NAME AS Company_Name,
+
+    cr.TITLE AS Cancellation_Reason,
+
+    /* Exception classification */
+    CASE 
+        WHEN t.ID IS NULL
+            THEN 'Drop Task Never Created'
+        WHEN COALESCE(t.COMPLETED, FALSE) = FALSE
+            THEN 'Drop Task Created but Not Completed'
+    END AS Drop_Task_Exception_Type,
+
+    /* Final accountability */
+    CASE 
+        WHEN t.ID IS NULL
+            THEN u_log.FIRSTNAME || ' ' || u_log.LASTNAME
+        ELSE u_task.FIRSTNAME || ' ' || u_task.LASTNAME
+    END AS Failed_User_Name,
+
+    CASE 
+        WHEN t.ID IS NULL
+            THEN u_log.USERNAME
+        ELSE u_task.USERNAME
+    END AS Failed_User_Username
+
+FROM CONTACTS c
+
+LEFT JOIN COMPANIES co 
+    ON c.COMPANY_ID = co.ID
+
+/* Drop task */
+LEFT JOIN TASKS t
+    ON c.ID = t.CONTACT_ID
+    AND t.TASK_ITEM_ID IN (43828, 45084)
+
+/* User responsible for open task */
+LEFT JOIN USERS u_task
+    ON t.ASSIGNED_TO = u_task.UID
+
+/* Cancellation log entry */
+LEFT JOIN CONTACTS_LOG cl
+    ON c.ID = cl.CONTACT_ID
+    AND cl.MESSAGE ILIKE 'Enrollment Plan Cancelled%'  -- 🔑 updated filter
+
+/* User who completed cancellation */
+LEFT JOIN USERS u_log
+    ON cl.CREATED_BY = u_log.UID
+
+/* Cancellation reason lookup */
+LEFT JOIN CANCELLATION_REASONS cr
+    ON c.DROPPED_REASON = cr.ID
+    AND cr.DEL = 0
+
+WHERE c.DROPPED = 1
+  AND c.DROPPED_DATE >= DATEADD(DAY, -30, CURRENT_DATE)
+
+  /* Exception-only */
+  AND (
+         t.ID IS NULL
+      OR COALESCE(t.COMPLETED, FALSE) = FALSE
+  )
+
+
+ORDER BY c.DROPPED_DATE DESC;
+
