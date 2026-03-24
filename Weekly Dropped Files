@@ -1,0 +1,23 @@
+WITH DroppedFiles AS (
+    SELECT 
+        c.ID AS Contact_ID,
+        c.DROPPED_DATE
+    FROM CONTACTS c
+    WHERE c.DROPPED = 1
+      AND c.DROPPED_DATE >= DATEADD(WEEK, -8, CURRENT_DATE)
+      AND c.DROPPED_DATE <= CURRENT_DATE
+),
+WeekGroups AS (
+    SELECT 
+        Contact_ID,
+        DROPPED_DATE,
+        DATE_TRUNC('WEEK', DROPPED_DATE) AS Week_Start
+    FROM DroppedFiles
+)
+SELECT 
+    TO_CHAR(Week_Start, 'YYYY-MM-DD') AS Week_Start,
+    TO_CHAR(DATEADD(DAY, 6, Week_Start), 'YYYY-MM-DD') AS Week_End,
+    COUNT(DISTINCT Contact_ID) AS Drop_Count
+FROM WeekGroups
+GROUP BY Week_Start
+ORDER BY Week_Start;
