@@ -1,0 +1,20 @@
+-- Adjustable year and month
+SET target_year = 2026;
+SET target_month = 4;
+
+SELECT
+    u.UID AS User_ID,
+    u.FIRSTNAME || ' ' || u.LASTNAME AS User_Name,
+    u.USERNAME AS User_Username,
+    COUNT(DISTINCT c.ID) AS Cancelled_Contacts_Count
+FROM CONTACTS_LOG cl
+JOIN USERS u
+    ON cl.CREATED_BY = u.UID
+JOIN CONTACTS c
+    ON cl.CONTACT_ID = c.ID
+WHERE c.DROPPED = 1
+  AND cl.MESSAGE ILIKE 'Enrollment Plan Cancelled%'  -- catches all variations
+  AND c.DROPPED_DATE >= DATEFROMPARTS($target_year, $target_month, 1)
+  AND c.DROPPED_DATE < DATEADD(MONTH, 1, DATEFROMPARTS($target_year, $target_month, 1))
+GROUP BY u.UID, User_Name, User_Username
+ORDER BY Cancelled_Contacts_Count DESC;
